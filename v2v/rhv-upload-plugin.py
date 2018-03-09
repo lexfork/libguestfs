@@ -1,5 +1,6 @@
 # -*- python -*-
-# oVirt or RHV upload nbdkit plugin used by ‘virt-v2v -o rhv-upload’
+# coding: utf-8
+# oVirt or RHV upload nbdkit plugin used by 'virt-v2v -o rhv-upload'
 # Copyright (C) 2018 Red Hat Inc.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -16,15 +17,15 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-import builtins
+from __builtin__ import open as builtin_open
 import json
 import logging
 import ssl
 import sys
 import time
 
-from http.client import HTTPSConnection
-from urllib.parse import urlparse
+from httplib import HTTPSConnection
+from urlparse import urlparse
 
 import ovirtsdk4 as sdk
 import ovirtsdk4.types as types
@@ -36,14 +37,25 @@ timeout = 5*60
 # Parameters are passed in via a JSON doc from the OCaml code.
 # Because this Python code ships embedded inside virt-v2v there
 # is no formal API here.
+# https://stackoverflow.com/a/13105359
+def byteify(input):
+    if isinstance(input, dict):
+        return {byteify(key): byteify(value)
+                for key, value in input.iteritems()}
+    elif isinstance(input, list):
+        return [byteify(element) for element in input]
+    elif isinstance(input, unicode):
+        return input.encode('utf-8')
+    else:
+        return input
 params = None
 
 def config(key, value):
     global params
 
     if key == "params":
-        with builtins.open(value, 'r') as fp:
-            params = json.load(fp)
+        with builtin_open(value, 'r') as fp:
+            params = byteify(json.load(fp))
     else:
         raise RuntimeError("unknown configuration key '%s'" % key)
 
@@ -57,7 +69,7 @@ def open(readonly):
     username = parsed.username or "admin@internal"
 
     # Read the password from file.
-    with builtins.open(params['output_password'], 'r') as fp:
+    with builtin_open(params['output_password'], 'r') as fp:
         password = fp.read()
     password = password.rstrip()
 
@@ -195,7 +207,7 @@ def get_options(h):
         # New imageio never needs authentication.
         h['needs_auth'] = False
 
-        j = json.loads(r.read())
+        j = byteify(json.loads(r.read()))
         h['can_zero'] = "zero" in j['features']
         h['can_trim'] = "trim" in j['features']
         h['can_flush'] = "flush" in j['features']
@@ -421,7 +433,7 @@ def close(h):
             pass
 
         # Write the disk ID file.  Only do this on successful completion.
-        with builtins.open(params['diskid_file'], 'w') as fp:
+        with builtin_open(params['diskid_file'], 'w') as fp:
             fp.write(disk.id)
 
     except:
