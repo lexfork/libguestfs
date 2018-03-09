@@ -19,8 +19,7 @@
 open Printf
 open Unix
 
-open Std_utils
-open Tools_utils
+open Common_utils
 open Unix_utils
 open Common_gettext.Gettext
 
@@ -170,8 +169,9 @@ See also \"OUTPUT TO RHV\" in the virt-v2v(1) manual.")
                                 | Sparse -> true
                                 | Preallocated -> false);
     "rhv_cafile", JSON.String rhv_options.rhv_cafile;
-    "rhv_cluster",
-      JSON.String (Option.default "Default" rhv_options.rhv_cluster);
+    "rhv_cluster", JSON.String (match rhv_options.rhv_cluster with
+                                | None -> "Default"
+				| Some rhv_cluster -> rhv_cluster);
     "rhv_direct", JSON.Bool rhv_options.rhv_direct;
 
     (* The 'Insecure' flag seems to be a number with various possible
@@ -368,7 +368,7 @@ If the messages above are not sufficient to diagnose the problem then add the â€
 
     (* Create the metadata. *)
     let ovf =
-      Create_ovf.create_ovf source targets guestcaps inspect
+      OVF.create_ovf source targets guestcaps inspect
                             output_alloc
                             sd_uuid image_uuids vol_uuids vm_uuid
                             OVirt in
